@@ -355,6 +355,7 @@ enum State {
 static NEXT_TOKEN: AtomicUsize = AtomicUsize::new(1);
 
 fn would_block() -> io::Error {
+    println!("in would_block")
     io::ErrorKind::WouldBlock.into()
 }
 
@@ -520,16 +521,21 @@ impl<'a> Read for &'a NamedPipe {
         let mut state = self.inner.io.lock().unwrap();
 
         if state.token.is_none() {
+            println!("Blocking because token");
             return Err(would_block());
         }
 
         match mem::replace(&mut state.read, State::None) {
             // In theory not possible with `token` checked above,
             // but return would block for now.
-            State::None => Err(would_block()),
+            State::None => {
+                println!("would block because no state")
+                Err(would_block())
+            },
 
             // A read is in flight, still waiting for it to finish
             State::Pending(buf, amt) => {
+                println!("Would block because pending");
                 state.read = State::Pending(buf, amt);
                 Err(would_block())
             }
